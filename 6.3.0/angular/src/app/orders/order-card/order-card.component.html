@@ -1,0 +1,11 @@
+<div class="card-box {{statusInfo[orderData.status]['bgColor']}} h-100">
+    <div class="inner">
+        <h4>{{orderData.name}}</h4>
+        <hr/>
+        <p *ngFor="let item of orderData.items">{{item.name}}</p>
+    </div>
+    <div class="icon">
+        <i class="fas {{statusInfo[orderData.status]['faIcon']}}"></i>
+    </div>
+    <a href="#"  class="stretched-link" class="card-box-footer">{{orderData.status}} <i class="fa fa-arrow-circle-right"></i></a>
+</div>
