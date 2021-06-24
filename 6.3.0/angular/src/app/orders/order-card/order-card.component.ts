@@ -1,5 +1,8 @@
-import { Component, OnInit, Input,} from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter, TemplateRef } from '@angular/core';
 import {STATUSINFO} from '../../../shared/order/statusCardInfo';
+import {OrderItem} from '../../../shared/order/orderItem.model';
+import { BsModalService, BsModalRef } from 'ngx-bootstrap/modal';
+
 
 
 
@@ -15,10 +18,18 @@ export class OrderCardComponent implements OnInit {
   //The present will depend on the status of the order.
   statusInfo = STATUSINFO;
 
-  @Input() orderData: any;
-  constructor() { }
+  @Input() orderData: OrderItem;
+  @Output() statusChange: EventEmitter<OrderItem> = new EventEmitter();
+  modalRef: BsModalRef;
+  constructor(private modalService: BsModalService) {
+
+  }
 
   ngOnInit(): void {
+  }
+  
+  openModal(template: TemplateRef<any>) {
+    this.modalRef = this.modalService.show(template);
   }
 
 }

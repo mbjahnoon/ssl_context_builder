@@ -40,6 +40,8 @@ import { SidebarUserPanelComponent } from './layout/sidebar-user-panel.component
 import { SidebarMenuComponent } from './layout/sidebar-menu.component';
 import { OrdersComponent } from './orders/orders.component';
 import { OrderCardComponent } from './orders/order-card/order-card.component';
+//my import
+import { TooltipModule } from 'ngx-bootstrap/tooltip';
 
 @NgModule({
   declarations: [
@@ -87,6 +89,7 @@ import { OrderCardComponent } from './orders/order-card/order-card.component';
     ServiceProxyModule,
     SharedModule,
     NgxPaginationModule,
+    TooltipModule.forRoot(),
   ],
   providers: [],
   entryComponents: [
