@@ -4,10 +4,12 @@ import ssl
 import subprocess
 
 from decorators import windows_only, macos_only
-from ssl_context_builder.constants import SSLKEYLOGFILE, ALLOWED_KEY_LENGTHS, ALLOWED_CIPHER_MODES, \
+from constants import SSLKEYLOGFILE, ALLOWED_KEY_LENGTHS, ALLOWED_CIPHER_MODES, \
     ALLOWED_SECURITY_LEVELS, ALLOWED_ENC_TYPES, WINDOWS_SUPPORTED_CERT_STORES, KEYCHAIN_TYPES
 
 __version__ = "0.0.1"
+
+# from ssl_context_builder.ssl_context_builder.constants import SSLKEYLOGFILE
 
 
 class SslContextBuilder:
@@ -240,7 +242,6 @@ if __name__ == '__main__':
     builder = SslContextBuilder()
     builder.use_tls_1_2_and_above() \
         .set_post_handshake_auth(True) \
-        .set_maximum_key_exchange_security_level() \
         .configure_urllib_hardening() \
         .disable_renegotiation() \
         .set_cipher_type("chacha", "aes") \
@@ -249,8 +250,9 @@ if __name__ == '__main__':
         .chek_hostname_and_common_name() \
         .use_mac_os_cert('user') \
         .use_mac_os_cert('system')
+    # .set_maximum_key_exchange_security_level() \
     # .use_tls_1_2_and_above()
     ctx = builder.build()
     c = ctx.get_ciphers()
-    print(ctx.security_level)
+    # print(ctx.security_level)
     print(list(map(lambda x: x, ctx.get_ciphers())))

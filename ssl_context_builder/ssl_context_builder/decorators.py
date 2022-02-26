@@ -1,8 +1,6 @@
 import platform
 import logging
 
-print(platform.system())
-
 
 def windows_only(func):
     def wrapper(*args, **kwargs):
