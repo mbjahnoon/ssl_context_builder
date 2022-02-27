@@ -3,13 +3,11 @@ import os
 import ssl
 import subprocess
 
-from decorators import windows_only, macos_only
-from constants import SSLKEYLOGFILE, ALLOWED_KEY_LENGTHS, ALLOWED_CIPHER_MODES, \
+from ssl_context_builder.ssl_context_builder.decorators import windows_only, macos_only
+from ssl_context_builder.ssl_context_builder.constants import SSLKEYLOGFILE, ALLOWED_KEY_LENGTHS, ALLOWED_CIPHER_MODES, \
     ALLOWED_SECURITY_LEVELS, ALLOWED_ENC_TYPES, WINDOWS_SUPPORTED_CERT_STORES, KEYCHAIN_TYPES
 
 __version__ = "0.0.1"
-
-# from ssl_context_builder.ssl_context_builder.constants import SSLKEYLOGFILE
 
 
 class SslContextBuilder:
