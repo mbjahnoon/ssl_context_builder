@@ -1,12 +1,14 @@
+from ssl import SSLContext
+
 from requests.adapters import HTTPAdapter
 
 
 class SslAdapter(HTTPAdapter):
     """
-    A TransportAdapter that re-enables 3DES support in Requests.
+    A TransportAdapter that allow SSLContext support in Requests.
     """
 
-    def __init__(self, ssl_context):
+    def __init__(self, ssl_context: SSLContext):
         self._custom_ssl = ssl_context
         super().__init__()
 

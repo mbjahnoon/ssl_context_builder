@@ -3,9 +3,10 @@ import os
 import ssl
 import subprocess
 
-from ssl_context_builder.ssl_context_builder.decorators import windows_only, macos_only
-from ssl_context_builder.ssl_context_builder.constants import SSLKEYLOGFILE, ALLOWED_KEY_LENGTHS, ALLOWED_CIPHER_MODES, \
-    ALLOWED_SECURITY_LEVELS, ALLOWED_ENC_TYPES, WINDOWS_SUPPORTED_CERT_STORES, KEYCHAIN_TYPES
+from ssl_context_builder.builder.decorators import windows_only, macos_only
+from ssl_context_builder.builder.constants import SSLKEYLOGFILE, ALLOWED_KEY_LENGTHS, ALLOWED_CIPHER_MODES, \
+    ALLOWED_SECURITY_LEVELS, ALLOWED_ENC_TYPES, WINDOWS_SUPPORTED_CERT_STORES, KEYCHAIN_TYPES, SSLv2, SSLv3, TLSv1, \
+    TLSv1_1, TLSv1_2, TLSv1_3, SUPPORTED_TLS_VERSIONS
 
 __version__ = "0.0.1"
 
@@ -13,42 +14,76 @@ __version__ = "0.0.1"
 class SslContextBuilder:
 
     def __init__(self):
+        """
+        Init the Builder.
+        initialize the ssl_context and load default certs
+        """
         self._ctx = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
         self._ctx.load_default_certs()
 
-    def build(self):
+    def build(self) -> ssl.SSLContext:
+        """
+        Return the SSL context after it being configured by the builder
+        @return: ssl.SSLContext
+        """
         return self._ctx
 
     def disable_key_logging(self):
+        """
+        Make sure no TLS keys are being logged
+        @return: SslContextBuilder
+        """
         del os.environ[SSLKEYLOGFILE]
         return self
 
     def set_key_logging(self, path: str):
+        """
+        WARNING: Only for debugging purpose
+        Enable key logging for TLS session
+        @param path: The path for which the TLS keys are logged to
+        @return: SslContextBuilder
+        """
         os.environ[SSLKEYLOGFILE] = path
         return self
 
-    def configure_urllib_hardening(self):
+    def disable_session_ticket(self):
+        """
+        Prevent client side from requesting a session ticket.
+        @return: SslContextBuilder
+        """
         self._ctx.options |= ssl.OP_NO_TICKET
         return self
 
     def chek_hostname_and_common_name(self):
+        """
+        Make sure hostname and common name will be validate in the retrieving certificate
+        @return: SslContextBuilder
+        """
         self._ctx.check_hostname = True
         self._ctx.hostname_checks_common_name = True
         return self
 
     def disable_renegotiation(self):
+        """
+        Disable all renegotiation in TLSv1.2 and earlier
+        @return: SslContextBuilder
+        """
         self._ctx.options |= ssl.OP_NO_RENEGOTIATION
         return self
 
     def use_max_key_length(self):
+        """
+         Make sure we are using key length of the size of 256 bit for symmetric encryption
+         @return: SslContextBuilder
+        """
         return self.set_key_length(max(ALLOWED_KEY_LENGTHS))
 
     def set_key_length(self, *key_lengths: int):
         """
-        Set the symetric key length
+        Set the symmetric key length
         NOTE: TLSv1_3 ciphers cannot be removed
-        :param key_lengths: [128,256]
-        :return:
+        @param key_lengths: [128,256]
+        @return: SslContextBuilder
         """
         for key_length in key_lengths:
             if key_length not in ALLOWED_KEY_LENGTHS:
@@ -64,6 +99,11 @@ class SslContextBuilder:
         return self
 
     def set_cipher_mode(self, *modes: str):
+        """
+        Set the cipher mode of the symmetric encryption
+        @param modes: ["cbc", "gcm"]
+        @return: SslContextBuilder
+        """
         # NOTE: TLSv1_3 ciphers cannot be removed
         modes = [mode.lower() for mode in modes]
 
@@ -81,19 +121,39 @@ class SslContextBuilder:
             logging.warning("Couldn't set key length. _ssl.SslContext doesn't support 'get_ciphers'")
         return self
 
-    def set_maximum_key_exchange_security_level(self):
+    def set_maximum_key_exchange_security_level(self):  # Non throw
+        """
+        Set the key_exchange security properties to maximum
+        @return: SslContextBuilder
+        """
         return self.set_key_exchange_security_level(max(ALLOWED_SECURITY_LEVELS))
 
-    def set_key_exchange_security_level(self, level: int):
-
-        if level not in ALLOWED_SECURITY_LEVELS:
-            logging.error("Invalid security level. security Level should be an int in the range of 1-5")
-        if level < self._ctx.security_level:
-            logging.warning("Security level of the SSL connection ha been downgraded")
-        self._ctx.set_ciphers(f'DEFAULT@SECLEVEL={level}')
-        return self
+    def set_key_exchange_security_level(self, level: int):  # Non throw
+        """
+        Set the key_exchange security properties to the given level.
+        the security level affects keyLength, TLS versions, allowed ciphers and more
+        more information here: https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_security_level.html
+        @param level: [1-5]
+        @return: SslContextBuilder
+        """
+        try:
+            if level not in ALLOWED_SECURITY_LEVELS:
+                logging.error("Invalid security level. security Level should be an int in the range of 1-5")
+            if level < self._ctx.security_level:
+                logging.warning("Security level of the SSL connection ha been downgraded")
+            self._ctx.set_ciphers(f'DEFAULT@SECLEVEL={level}')
+            return self
+        except Exception as e:
+            logging.warning(
+                f"Failed to set_key_exchange_security_level. "
+                f"This feature is supported from openssl 1.1.0 and above. Exception: {e}")
 
     def set_cipher_type(self, *types: str):
+        """
+        Set the cipher type of the symmetric encryption
+        @param types: ["aes", "chacha"]
+        @return: SslContextBuilder
+        """
         # NOTE: TLSv1_3 ciphers cannot be removed
         types = [cipher_type.lower() for cipher_type in types]
         for cipher_type in types:
@@ -114,53 +174,78 @@ class SslContextBuilder:
 
     # Configure TLS version
     def set_min_version(self, version: str):
-        if version == 'SSLv2':
+        """
+        Set the minimum TLS version to use
+        @param version: [SSLv2, SSLv3, TLSv1, TLSv1_1, TLSv1_2, TLSv1_3]
+        @return:SslContextBuilder
+        """
+        if version not in SUPPORTED_TLS_VERSIONS:
+            logging.error("Invalid TLS version %s, ", version)
+            raise ValueError(f"Invalid TLS version {version}")
+        if version == SSLv2:
             self._ctx.minimum_version = ssl.TLSVersion.MINIMUM_SUPPORTED
-        elif version == 'SSLv3':
+        elif version == SSLv3:
             self._ctx.minimum_version = ssl.TLSVersion.SSLv3
-        elif version == 'TLSv1':
+        elif version == TLSv1:
             self._ctx.minimum_version = ssl.TLSVersion.TLSv1
-        elif version == 'TLSv1_1':
+        elif version == TLSv1_1:
             self._ctx.minimum_version = ssl.TLSVersion.TLSv1_1
-        elif version == 'TLSv1_2':
+        elif version == TLSv1_2:
             self._ctx.minimum_version = ssl.TLSVersion.TLSv1_2
-        elif version == 'TLSv1_3':
+        elif version == TLSv1_3:
             self._ctx.minimum_version = ssl.TLSVersion.TLSv1_3
         else:
             raise ValueError(f"unknown version: {version}")
         return self
 
     def set_max_version(self, version: str):
-        if version == 'SSLv2':
+        """
+        Set the maximum TLS version to use
+        @param version: [SSLv2, SSLv3, TLSv1, TLSv1_1, TLSv1_2, TLSv1_3]
+        @return:SslContextBuilder
+        """
+        if version not in SUPPORTED_TLS_VERSIONS:
+            logging.error("Invalid TLS version %s, ", version)
+            raise ValueError(f"Invalid TLS version {version}")
+        if version == SSLv2:
             self._ctx.maximum_version = ssl.TLSVersion.MINIMUM_SUPPORTED
-        elif version == 'SSLv3':
+        elif version == SSLv3:
             self._ctx.maximum_version = ssl.TLSVersion.SSLv3
-        elif version == 'TLSv1':
+        elif version == TLSv1:
             self._ctx.maximum_version = ssl.TLSVersion.TLSv1
-        elif version == 'TLSv1_1':
+        elif version == TLSv1_1:
             self._ctx.maximum_version = ssl.TLSVersion.TLSv1_1
-        elif version == 'TLSv1_2':
+        elif version == TLSv1_2:
             self._ctx.maximum_version = ssl.TLSVersion.TLSv1_2
-        elif version == 'TLSv1_3':
+        elif version == TLSv1_3:
             self._ctx.maximum_version = ssl.TLSVersion.TLSv1_3
         else:
             raise ValueError(f"unknown version: {version}")
         return self
 
     def use_tls_1_2_and_above(self):
-        self.set_min_version("TLSv1_2")
-        self.set_max_version("TLSv1_3")
+        """
+        Set the TLS versions to be 1_2 and above
+        @return: SslContextBuilder
+        """
+        self.set_min_version(TLSv1_2)
+        self.set_max_version(TLSv1_3)
         return self
 
     def use_minimum_tls_version(self):
-        self.set_min_version("SSLv2")
-        self.set_max_version("TLSv1_3")
+        """
+        Set the TLS versions to be SSLv2 and above
+        @return: SslContextBuilder
+        """
+        self.set_min_version(SSLv2)
+        self.set_max_version(TLSv1_3)
         return self
 
     def whitelist_application_layer_protocols(self, *protocols):
         """
-        :param protocols: application layers protocols such as ['http/1.1', 'spdy/2']
-        :return:
+        Set the allowed Network protocols to be allowed after the TLS handshake
+        @param protocols: application layers protocols such as ['http/1.1', 'spdy/2']
+        @return:SslContextBuilder
         """
         if ssl.HAS_ALPN:
             self._ctx.set_alpn_protocols(protocols)
@@ -169,23 +254,41 @@ class SslContextBuilder:
         return self
 
     def set_post_handshake_auth(self, value: bool):
+        """
+        Enable or Disable TLS 1.3 post-handshake client authentication
+        @param value: True to enable. and False to disable
+        @return: SslContextBuilder
+        """
         self._ctx.post_handshake_auth = value
         return self
 
     # Load certs
     def use_default_certs(self):
-        # Note This will not load certs in macos
-        # This function will not raise indication in case of failure
+        """
+        Load the openssl default certs.
+        Note - This will not load certs in macos
+        This function will not raise indication in case of failure
+        @return: SslContextBuilder
+        """
+
         self._ctx.set_default_verify_paths()
         return self
 
     def use_crl(self):
+        """
+        Not implemented
+        @return: SslContextBuilder
+        """
         logging.warning("CRL is not implemented")
         return self
 
     @windows_only
     def use_windows_os_cert(self, store_name: str):
-
+        """
+        Load the RootCA from windows selected cert store
+        @param store_name: ["CA", "ROOT", "MY"]
+        @return: SslContextBuilder
+        """
         if store_name not in WINDOWS_SUPPORTED_CERT_STORES:
             raise ValueError("Invalid win32 store name, store name must be one of %s",
                              ",".join(WINDOWS_SUPPORTED_CERT_STORES))
@@ -200,14 +303,18 @@ class SslContextBuilder:
 
     @macos_only
     def use_mac_os_cert(self, keychain_type: str = None, key_chain_path: str = None):
-
-        if keychain_type not in KEYCHAIN_TYPES.keys():
+        """
+        Load the RootCA from macos selected cert store
+        @param keychain_type: [root,system,user]
+        @param key_chain_path: custom key chain that store certificates
+        @return:
+        """
+        if keychain_type and keychain_type not in KEYCHAIN_TYPES.keys():
             logging.error("Error using macOS trust store cert. keychain_tyoe must be from the followings: %s",
                           ",".join(KEYCHAIN_TYPES.items()))
             raise ValueError(
                 f"Error using macOS trust store cert. keychain_tyoe must be from the followings: "
                 f"{','.join(KEYCHAIN_TYPES.items())}")
-
         keychain = None
         if keychain_type is not None:
             keychain = KEYCHAIN_TYPES[keychain_type]
@@ -217,7 +324,16 @@ class SslContextBuilder:
         return self
 
     def _load_mac_certs_from_keychain(self, keychain: str) -> None:
-        """ Get Root CAs from mac Keychain. """
+        """
+        Using Command line to fetch certificates.
+        @param keychain:
+        @return:
+        """
+        if not os.path.exists(keychain):
+            logging.warning("Can't find keychain %s in the machine."
+                            " This is dangerous operation that could lead to remote code execution. Abborting...,",
+                            keychain)
+            return
         logging.debug("Get CA certs from mac keychain")
         try:
             get_ca_certs_process = subprocess.run(
@@ -234,23 +350,3 @@ class SslContextBuilder:
 
         except Exception as err:
             logging.warning("Got an error while trying to extract certificate from keychain")
-
-
-if __name__ == '__main__':
-    builder = SslContextBuilder()
-    builder.use_tls_1_2_and_above() \
-        .set_post_handshake_auth(True) \
-        .configure_urllib_hardening() \
-        .disable_renegotiation() \
-        .set_cipher_type("chacha", "aes") \
-        .set_key_length(256) \
-        .set_cipher_mode("gcm") \
-        .chek_hostname_and_common_name() \
-        .use_mac_os_cert('user') \
-        .use_mac_os_cert('system')
-    # .set_maximum_key_exchange_security_level() \
-    # .use_tls_1_2_and_above()
-    ctx = builder.build()
-    c = ctx.get_ciphers()
-    # print(ctx.security_level)
-    print(list(map(lambda x: x, ctx.get_ciphers())))
