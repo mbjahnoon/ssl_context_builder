@@ -139,14 +139,18 @@ class SslContextBuilder:
         try:
             if level not in ALLOWED_SECURITY_LEVELS:
                 logging.error("Invalid security level. security Level should be an int in the range of 1-5")
-            if level < self._ctx.security_level:
-                logging.warning("Security level of the SSL connection ha been downgraded")
+            try:
+                if level < self._ctx.security_level:
+                    logging.warning("Security level of the SSL connection ha been downgraded")
+            except:
+                logging.warning("Couldn't get ssl_context security level")
             self._ctx.set_ciphers(f'DEFAULT@SECLEVEL={level}')
             return self
         except Exception as e:
             logging.warning(
                 f"Failed to set_key_exchange_security_level. "
                 f"This feature is supported from openssl 1.1.0 and above. Exception: {e}")
+            return self
 
     def set_cipher_type(self, *types: str):
         """

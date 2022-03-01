@@ -5,6 +5,7 @@ import ssl
 from ssl import SSLContext
 import logging
 
+from ssl_context_builder.builder.builder import SslContextBuilder
 from ssl_context_builder.http_impl.requests_wrapper.ssl_adapter import SslAdapter
 
 
