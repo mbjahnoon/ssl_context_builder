@@ -1,12 +1,25 @@
 # SSL Context Builder
 
-Creating SSLContext in a functional approach.
+Making a secure https request is not an easy task. http libraries often hide sensitive configurations
+that affects the request behavior in functional and security manner.
+
+**security misconfiguration** is the No.5 category in the [OWASP TOP 10](https://owasp.org/www-project-top-ten/).
+Indicates that 90% of applications were tested for some form of misconfiguration
+
+This Project goals are:
+1. To show what's going under the hood of requests library and suggest a way to handle misconfiguration issues.
+2. Demonstrate how can we control and configure our SSL in an understandable way.
+3. Show how system rootCA's can be accessed by python.
 
 ## Certification level
 
 ![](https://img.shields.io/badge/Repository%20purpose-Education-brightgreen)
 
 This repo is for **Educational purpose only!**. Any use of it internal in production environment is highly discouraged.
+
+## SslContextBuilder:
+SslContextBuilder is a builder class implement fluent interface design pattern.
+It's create and configure ssl.SSLContext class.
 
 ## Usage example:
 
@@ -51,4 +64,20 @@ Look into `RequestsSecureSession` implementation for more details.
 ctx = builder.use_tls_1_2_and_above().use_windows_certs("ROOT")
 with RequestsSecureSession(ctx) as secure_session:
     print(secure_session.session.get("https://google.com"))
+```
+
+#### Using aiohttp
+Example of configuring aiohttp ssl_context. aiohttp comes with a build in option to 
+configure ssl_context and trust it certificates.
+```
+
+url = "https://google.com"
+ctx = SslContextBuilder().use_tls_1_2_and_above().build()
+
+async def invoke_request():
+    async with ClientSession() as session:
+        async with session.get(url, ssl_context=ctx) as resp:
+            print(await resp.text())
+
+asyncio.run(invoke_request())
 ```

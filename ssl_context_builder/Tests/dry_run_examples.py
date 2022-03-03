@@ -1,3 +1,7 @@
+import asyncio
+
+from aiohttp import ClientSession
+
 from ssl_context_builder.builder.builder import SslContextBuilder
 from ssl_context_builder.http_impl.requests_wrapper.secure_session import RequestsSecureSession
 
@@ -52,4 +56,14 @@ def secure_requests_session_with_no_managed_context():
     print(secure_session.session.get("https://google.com"))
 
 
-secure_requests_session()
+def aiohttp_get():
+    url = "https://google.com"
+    ctx = SslContextBuilder().use_tls_1_2_and_above().build()
+
+    async def invoke_request():
+        async with ClientSession() as session:
+            async with session.get(url, ssl_context=ctx) as resp:
+                print(await resp.text())
+
+    asyncio.run(invoke_request())
+

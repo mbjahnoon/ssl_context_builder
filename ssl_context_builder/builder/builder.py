@@ -8,8 +8,6 @@ from ssl_context_builder.builder.constants import SSLKEYLOGFILE, ALLOWED_KEY_LEN
     ALLOWED_SECURITY_LEVELS, ALLOWED_ENC_TYPES, WINDOWS_SUPPORTED_CERT_STORES, KEYCHAIN_TYPES, SSLv2, SSLv3, TLSv1, \
     TLSv1_1, TLSv1_2, TLSv1_3, SUPPORTED_TLS_VERSIONS
 
-__version__ = "0.0.1"
-
 
 class SslContextBuilder:
 
